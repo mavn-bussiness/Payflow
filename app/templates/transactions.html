@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Transactions — PayFlow{% endblock %}
+{% block topbar_title %}Transactions{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('payments.new_payment') }}" class="btn btn-primary btn-sm"><i data-lucide="plus"></i> New Payment</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-1 mb-3 flex-wrap">
+  {% for s in ['all', 'pending', 'paid', 'failed', 'cancelled'] %}
+  <a href="{{ url_for('dashboard.transactions', status=s) }}"
+     class="btn btn-sm {% if status_filter == s %}btn-primary{% else %}btn-secondary{% endif %}">
+    {% if s == 'all' %}<i data-lucide="list"></i>
+    {% elif s == 'pending' %}<i data-lucide="clock"></i>
+    {% elif s == 'paid' %}<i data-lucide="check-circle"></i>
+    {% elif s == 'failed' %}<i data-lucide="x-circle"></i>
+    {% else %}<i data-lucide="minus-circle"></i>{% endif %}
+    {{ s.capitalize() }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  {% if transactions %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Reference</th><th>Customer</th><th>Service</th>
+        <th>Qty</th><th>Amount (UGX)</th><th>Method</th><th>Status</th><th>Date</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in transactions %}
+      <tr>
+        <td><a href="{{ url_for('payments.payment_detail', ref=txn.reference) }}" class="ref-pill">{{ txn.reference }}</a></td>
+        <td>
+          <div style="font-weight:500;">{{ txn.customer_name }}</div>
+          {% if txn.customer_email %}<div class="text-xs text-muted">{{ txn.customer_email }}</div>{% endif %}
+        </td>
+        <td class="text-muted text-sm">{{ txn.service.name if txn.service else '—' }}</td>
+        <td class="text-sm text-muted">{{ txn.quantity_label }}</td>
+        <td><span style="font-family:'Syne',sans-serif;font-weight:700;">{{ "{:,.0f}".format(txn.amount) }}</span></td>
+        <td class="text-sm text-muted">{{ txn.payment_method or '—' }}</td>
+        <td>
+          <span class="badge badge-{{ txn.status }}">
+            {% if txn.status == 'paid' %}<i data-lucide="check"></i>
+            {% elif txn.status == 'pending' %}<i data-lucide="clock"></i>
+            {% elif txn.status == 'failed' %}<i data-lucide="x"></i>
+            {% else %}<i data-lucide="minus"></i>{% endif %}
+            {{ txn.status }}
+          </span>
+        </td>
+        <td class="text-xs text-muted">{{ txn.created_at.strftime('%d %b %Y') }}</td>
+        <td>
+          <a href="{{ url_for('payments.payment_detail', ref=txn.reference) }}" class="btn btn-ghost btn-sm">
+            <i data-lucide="eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="receipt"></i></div>
+    <h3>No {{ status_filter if status_filter != 'all' else '' }} transactions</h3>
+    <p>Payments you create will appear here.</p>
+    <a href="{{ url_for('payments.new_payment') }}" class="btn btn-primary btn-sm mt-2"><i data-lucide="plus"></i> Create Payment</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

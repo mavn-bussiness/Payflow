@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PayFlow — Digital Payments for Ugandan Businesses</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root{--bg:#07080f;--surface:#0f1018;--surface2:#181a26;--border:#252737;--accent:#00e5a0;--accent-dim:rgba(0,229,160,0.08);--text:#eeeef5;--muted:#5a5a78;--text2:#a8a8c0;--purple:#7c6bff;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    h1,h2,h3{font-family:'Syne',sans-serif;}
+
+    /* NAV */
+    nav{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 3rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(7,8,15,0.92);backdrop-filter:blur(12px);z-index:50;}
+    .brand{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--accent);display:flex;align-items:center;gap:.5rem;}
+    .brand span{color:var(--text);}
+    .nav-links{display:flex;gap:.5rem;align-items:center;}
+    .btn-ghost{padding:.45rem 1rem;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:8px;font-size:.88rem;font-weight:500;cursor:pointer;text-decoration:none;font-family:'DM Sans',sans-serif;transition:all .15s;}
+    .btn-ghost:hover{color:var(--text);border-color:var(--accent);}
+    .btn-primary{padding:.45rem 1.1rem;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;font-family:'DM Sans',sans-serif;transition:all .15s;}
+    .btn-primary:hover{background:#00cc90;box-shadow:0 0 20px rgba(0,229,160,.25);}
+
+    /* HERO */
+    .hero{padding:7rem 2rem 5rem;text-align:center;background:radial-gradient(ellipse 65% 45% at 50% -10%,rgba(0,229,160,.09) 0%,transparent 70%);}
+    .hero-tag{display:inline-flex;align-items:center;gap:.4rem;background:var(--accent-dim);border:1px solid rgba(0,229,160,.2);color:var(--accent);padding:.3rem .9rem;border-radius:100px;font-size:.78rem;font-weight:600;margin-bottom:1.75rem;letter-spacing:.04em;}
+    .hero-tag i{width:12px;height:12px;}
+    h1{font-size:clamp(2.4rem,6vw,4.2rem);font-weight:800;line-height:1.08;letter-spacing:-.02em;max-width:780px;margin:0 auto;}
+    h1 em{font-style:normal;color:var(--accent);}
+    .hero-sub{color:var(--text2);font-size:1.08rem;max-width:520px;margin:1.5rem auto 2.5rem;line-height:1.7;}
+    .hero-actions{display:flex;gap:.85rem;justify-content:center;flex-wrap:wrap;}
+    .btn-large{padding:.75rem 2rem;font-size:1rem;border-radius:10px;}
+
+    /* PAYMENT LOGOS */
+    .payment-strip{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-top:3rem;flex-wrap:wrap;}
+    .payment-strip-label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-right:.5rem;}
+    .pay-logo{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;color:var(--text2);display:flex;align-items:center;gap:.4rem;}
+    .pay-logo i{width:13px;height:13px;}
+    .mtn{color:#f5c400;border-color:rgba(245,196,0,.2);background:rgba(245,196,0,.05);}
+    .airtel{color:#ff1414;border-color:rgba(255,20,20,.2);background:rgba(255,20,20,.05);}
+    .visa{color:#1a73e8;border-color:rgba(26,115,232,.2);background:rgba(26,115,232,.05);}
+    .bank{color:var(--text2);}
+
+    /* FEATURES */
+    .section{max-width:1100px;margin:0 auto;padding:5rem 2rem;}
+    .section-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700;margin-bottom:.75rem;}
+    .section-title{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;letter-spacing:-.02em;max-width:500px;margin-bottom:3rem;line-height:1.15;}
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;}
+    .feat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem;transition:border-color .2s,transform .15s;}
+    .feat:hover{border-color:rgba(0,229,160,.25);transform:translateY(-2px);}
+    .feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;}
+    .feat-icon i{width:20px;height:20px;}
+    .feat h3{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:.4rem;}
+    .feat p{color:var(--text2);font-size:.85rem;line-height:1.65;}
+
+    /* USE CASES */
+    .use-cases{max-width:1100px;margin:0 auto;padding:0 2rem 5rem;}
+    .use-cases-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;}
+    .use-case{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;display:flex;align-items:flex-start;gap:.85rem;}
+    .use-case-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .use-case-icon i{width:18px;height:18px;}
+    .use-case h3{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:.2rem;}
+    .use-case p{color:var(--muted);font-size:.8rem;line-height:1.5;}
+
+    /* CTA */
+    .cta{background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:5rem 2rem;text-align:center;}
+    .cta h2{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.85rem;}
+    .cta p{color:var(--text2);font-size:1rem;max-width:460px;margin:0 auto 2rem;}
+
+    footer{text-align:center;padding:2rem;color:var(--muted);font-size:.82rem;border-top:1px solid var(--border);}
+    footer a{color:var(--muted);text-decoration:none;}
+    @media(max-width:640px){nav{padding:.9rem 1.25rem;}.hero{padding:5rem 1.25rem 3rem;}.section,.use-cases{padding-left:1.25rem;padding-right:1.25rem;}}
+  </style>
+</head>
+<body>
+<nav>
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="3" stroke="#00e5a0" stroke-width="2"/><path d="M2 10h20" stroke="#00e5a0" stroke-width="2"/><circle cx="7" cy="15" r="1.5" fill="#00e5a0"/></svg>
+    Pay<span>Flow</span>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('auth.login') }}" class="btn-ghost">Sign In</a>
+    <a href="{{ url_for('auth.register') }}" class="btn-primary">Get Started Free</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag"><i data-lucide="zap"></i> Built for Uganda &amp; East Africa</div>
+  <h1>Collect payments <em>faster.</em><br>Track everything <em>smarter.</em></h1>
+  <p class="hero-sub">One platform for shops, hospitals, schools, and service providers. Go fully digital — no queues, no paperwork, no missed payments.</p>
+  <div class="hero-actions">
+    <a href="{{ url_for('auth.register') }}" class="btn-primary btn-large">Start for free</a>
+    <a href="{{ url_for('auth.login') }}" class="btn-ghost btn-large">Sign in</a>
+  </div>
+
+  <div class="payment-strip">
+    <span class="payment-strip-label">Accepts</span>
+    <span class="pay-logo mtn"><i data-lucide="smartphone"></i> MTN Mobile Money</span>
+    <span class="pay-logo airtel"><i data-lucide="smartphone"></i> Airtel Money</span>
+    <span class="pay-logo visa"><i data-lucide="credit-card"></i> Visa / Mastercard</span>
+    <span class="pay-logo bank"><i data-lucide="building-2"></i> Bank Transfer</span>
+  </div>
+</section>
+
+<div class="section">
+  <div class="section-label">Features</div>
+  <h2 class="section-title">Everything your business needs to go digital</h2>
+  <div class="features-grid">
+    <div class="feat">
+      <div class="feat-icon" style="background:var(--accent-dim);"><i data-lucide="zap" style="color:var(--accent);"></i></div>
+      <h3>Instant Payment Links</h3>
+      <p>Generate a unique payment reference or link in seconds. Customers pay immediately through Flutterwave's secure checkout.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(124,107,255,.1);"><i data-lucide="layout-dashboard" style="color:var(--purple);"></i></div>
+      <h3>Live Dashboard</h3>
+      <p>See every transaction as it happens. Track collections, pending payments, and business performance in one place.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(245,158,11,.1);"><i data-lucide="shield-check" style="color:#f59e0b;"></i></div>
+      <h3>Secured by Flutterwave</h3>
+      <p>Every payment is processed through Flutterwave — PCI-DSS compliant, fraud protected, and trusted by 1M+ businesses.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(14,165,233,.1);"><i data-lucide="repeat" style="color:#0ea5e9;"></i></div>
+      <h3>Auto Verification</h3>
+      <p>Payments are server-verified in real time. No manual confirmation needed — your records update automatically.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(0,229,160,.08);"><i data-lucide="package" style="color:var(--accent);"></i></div>
+      <h3>Service Management</h3>
+      <p>Define your products and services with prices. Reuse them across payments without re-entering amounts each time.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon" style="background:rgba(255,77,109,.1);"><i data-lucide="file-text" style="color:#ff4d6d;"></i></div>
+      <h3>Paperless Records</h3>
+      <p>Every transaction is stored with a unique reference, customer details, and timestamp. No more manual bookkeeping.</p>
+    </div>
+  </div>
+</div>
+
+<div class="use-cases">
+  <div class="section-label" style="margin-bottom:.75rem;">Use Cases</div>
+  <h2 style="font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:1.5rem;">Works for any business type</h2>
+  <div class="use-cases-grid">
+    <div class="use-case">
+      <div class="use-case-icon" style="background:rgba(0,229,160,.08);"><i data-lucide="shopping-cart" style="color:var(--accent);"></i></div>
+      <div><h3>Shops &amp; Supermarkets</h3><p>Generate digital bills and accept multiple payment methods instantly.</p></div>
+    </div>
+    <div class="use-case">
+      <div class="use-case-icon" style="background:rgba(255,77,109,.1);"><i data-lucide="stethoscope" style="color:#ff4d6d;"></i></div>
+      <div><h3>Hospitals &amp; Clinics</h3><p>Replace manual billing. Patients pay from their seat without moving counters.</p></div>
+    </div>
+    <div class="use-case">
+      <div class="use-case-icon" style="background:rgba(124,107,255,.1);"><i data-lucide="graduation-cap" style="color:var(--purple);"></i></div>
+      <div><h3>Schools &amp; Institutions</h3><p>Collect school fees remotely with instant confirmation and records.</p></div>
+    </div>
+    <div class="use-case">
+      <div class="use-case-icon" style="background:rgba(245,158,11,.1);"><i data-lucide="briefcase" style="color:#f59e0b;"></i></div>
+      <div><h3>Service Providers</h3><p>Charge for services and track payments without paperwork or chasing clients.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="cta">
+  <h2>Ready to modernise your business?</h2>
+  <p>Join businesses across Uganda accepting digital payments with PayFlow. Free to start.</p>
+  <a href="{{ url_for('auth.register') }}" class="btn-primary btn-large" style="display:inline-flex;align-items:center;gap:.5rem;">
+    <i data-lucide="arrow-right" style="width:18px;height:18px;"></i> Get Started Free
+  </a>
+</div>
+
+<footer>
+  <p>© 2026 PayFlow · Powered by <a href="https://flutterwave.com" target="_blank">Flutterwave</a> · Made for Uganda 🇺🇬</p>
+</footer>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

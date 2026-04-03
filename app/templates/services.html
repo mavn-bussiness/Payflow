@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Services — PayFlow{% endblock %}
+{% block topbar_title %}Services{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <!-- Add Service -->
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i data-lucide="plus-circle"></i> Add Service / Product</div></div>
+    <form method="POST">
+      <input type="hidden" name="action" value="add">
+      <div class="form-group">
+        <label><i data-lucide="tag"></i> Name *</label>
+        <input type="text" name="name" placeholder="e.g. Haircut, Chicken Tray, 1hr Consultation" required />
+      </div>
+      <div class="form-group">
+        <label><i data-lucide="align-left"></i> Description</label>
+        <input type="text" name="description" placeholder="Short description" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label><i data-lucide="layers"></i> Pricing Type</label>
+          <select name="pricing_tier" id="addPricingTier" onchange="togglePricingFields('add')">
+            {% for key, label in pricing_tiers.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label><i data-lucide="package"></i> Unit Label</label>
+          <input type="text" name="unit_label" id="addUnitLabel" placeholder="e.g. kg, hour, piece, tray" value="item" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label><i data-lucide="banknote"></i> <span id="addPriceLabel">Price (UGX) *</span></label>
+        <input type="number" name="price" placeholder="e.g. 50000" min="0" step="100" required />
+      </div>
+
+      <div id="addNegotiableFields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label style="font-size:0.8rem;">Min Price (UGX)</label>
+            <input type="number" name="min_price" placeholder="Minimum" min="0" step="100" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:0.8rem;">Max Price (UGX)</label>
+            <input type="number" name="max_price" placeholder="Maximum" min="0" step="100" />
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary"><i data-lucide="plus"></i> Add Service</button>
+    </form>
+  </div>
+
+  <!-- Active Services -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="package"></i> Active Services</div>
+      <span style="font-size:0.8rem;color:var(--muted);">{{ services|length }} total</span>
+    </div>
+    {% if services %}
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Pricing</th><th>Rate</th><th></th></tr></thead>
+      <tbody>
+        {% for svc in services %}
+        <tr>
+          <td>
+            <div style="font-weight:500;">{{ svc.name }}</div>
+            {% if svc.description %}<div class="text-xs text-muted">{{ svc.description }}</div>{% endif %}
+          </td>
+          <td>
+            <span style="font-size:0.72rem;background:rgba(124,107,255,0.12);color:#7c6bff;border-radius:4px;padding:2px 7px;white-space:nowrap;">
+              {{ svc.pricing_label }}
+            </span>
+          </td>
+          <td>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);">
+              {{ "{:,.0f}".format(svc.price) }}
+            </div>
+            <div class="text-xs text-muted">UGX / {{ svc.unit_label or 'item' }}</div>
+            {% if svc.min_price and svc.max_price %}
+            <div class="text-xs text-muted">{{ "{:,.0f}".format(svc.min_price) }} – {{ "{:,.0f}".format(svc.max_price) }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <form method="POST" style="display:inline;">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="service_id" value="{{ svc.id }}">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this service?')">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i data-lucide="package"></i></div>
+      <h3>No services yet</h3>
+      <p>Add your products or services on the left. Both formal and informal businesses welcome — set fixed prices, hourly rates, or negotiable ranges.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePricingFields(prefix) {
+  const tier = document.getElementById(prefix + 'PricingTier').value;
+  const negFields = document.getElementById(prefix + 'NegotiableFields');
+  const priceLabel = document.getElementById(prefix + 'PriceLabel');
+  const unitLabel  = document.getElementById(prefix + 'UnitLabel');
+
+  negFields.style.display = (tier === 'negotiable') ? '' : 'none';
+
+  const labels = {
+    'fixed': 'Price (UGX) *',
+    'negotiable': 'Starting / Default Price (UGX) *',
+    'per_unit': 'Price per Unit (UGX) *',
+    'hourly': 'Hourly Rate (UGX) *',
+    'daily': 'Daily Rate (UGX) *',
+    'custom': 'Base / Estimate Price (UGX) *',
+  };
+  if (priceLabel) priceLabel.textContent = labels[tier] || 'Price (UGX) *';
+
+  const unitDefaults = {
+    'hourly': 'hour',
+    'daily': 'day',
+    'per_unit': 'unit',
+  };
+  if (unitLabel && unitDefaults[tier]) unitLabel.value = unitDefaults[tier];
+}
+</script>
+{% endblock %}

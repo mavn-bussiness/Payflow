@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — PayFlow{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('payments.new_payment') }}" class="btn btn-primary btn-sm">
+    <i data-lucide="plus"></i> New Payment
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-card-icon" style="background:var(--accent-dim);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+    <div class="stat-label">Total Collected</div>
+    <div class="stat-value text-accent">{{ "{:,.0f}".format(total_paid) }}</div>
+    <div class="stat-sub">UGX · all time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-icon" style="background:var(--purple-dim);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c6bff" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <div class="stat-label">Paid Transactions</div>
+    <div class="stat-value" style="color:var(--purple)">{{ paid_count }}</div>
+    <div class="stat-sub">confirmed payments</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-icon" style="background:var(--warn-dim);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div class="stat-label">Pending</div>
+    <div class="stat-value" style="color:var(--warn)">{{ pending_count }}</div>
+    <div class="stat-sub">awaiting payment</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-icon" style="background:rgba(14,165,233,0.1);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    </div>
+    <div class="stat-label">Active Services</div>
+    <div class="stat-value" style="color:#0ea5e9">{{ services|length }}</div>
+    <div class="stat-sub">products defined</div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="bar-chart-2"></i> Revenue — Last 7 Days</div>
+    </div>
+    <canvas id="revenueChart" height="160"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="pie-chart"></i> Transaction Status</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">
+      <canvas id="statusChart" width="200" height="160" style="max-width:200px;"></canvas>
+      <div id="statusLegend" style="margin-left:1.25rem;font-size:0.8rem;display:flex;flex-direction:column;gap:0.45rem;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Recent Transactions -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="receipt"></i> Recent Transactions</div>
+      <a href="{{ url_for('dashboard.transactions') }}" class="btn btn-ghost btn-sm">View all <i data-lucide="arrow-right"></i></a>
+    </div>
+    {% if transactions %}
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Reference</th><th>Customer</th><th>Qty</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for txn in transactions %}
+        <tr>
+          <td><a href="{{ url_for('payments.payment_detail', ref=txn.reference) }}" class="ref-pill">{{ txn.reference }}</a></td>
+          <td>
+            <div style="font-weight:500;">{{ txn.customer_name }}</div>
+            <div class="text-xs text-muted">{{ txn.created_at.strftime('%d %b %Y') }}</div>
+          </td>
+          <td class="text-sm text-muted">{{ txn.quantity_label }}</td>
+          <td><span style="font-family:'Syne',sans-serif;font-weight:700;">{{ "{:,.0f}".format(txn.amount) }}</span> <span class="text-xs text-muted">UGX</span></td>
+          <td>
+            <span class="badge badge-{{ txn.status }}">
+              {% if txn.status == 'paid' %}<i data-lucide="check"></i>
+              {% elif txn.status == 'pending' %}<i data-lucide="clock"></i>
+              {% elif txn.status == 'failed' %}<i data-lucide="x"></i>
+              {% else %}<i data-lucide="minus"></i>{% endif %}
+              {{ txn.status }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i data-lucide="receipt"></i></div>
+      <h3>No transactions yet</h3>
+      <p>Create your first payment to get started.</p>
+      <a href="{{ url_for('payments.new_payment') }}" class="btn btn-primary btn-sm mt-2"><i data-lucide="plus"></i> New Payment</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Top Services -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="trending-up"></i> Top Services by Revenue</div>
+      <a href="{{ url_for('dashboard.analytics') }}" class="btn btn-ghost btn-sm">Analytics <i data-lucide="arrow-right"></i></a>
+    </div>
+    {% if top_services %}
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Service</th><th>Revenue (UGX)</th><th>Sales</th></tr></thead>
+      <tbody>
+        {% for svc in top_services %}
+        <tr>
+          <td style="font-weight:500;">{{ svc.name }}</td>
+          <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);">{{ "{:,.0f}".format(svc.revenue) }}</td>
+          <td class="text-muted">{{ svc.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i data-lucide="package"></i></div>
+      <h3>No revenue data</h3>
+      <p>Revenue by service appears here once payments are confirmed.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const accent = '#00e5a0';
+const purple = '#7c6bff';
+const warn   = '#f59e0b';
+const danger = '#ef4444';
+const muted  = '#4a5568';
+
+// Revenue bar chart
+const revCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ daily_labels | tojson }},
+    datasets: [{
+      label: 'Revenue (UGX)',
+      data: {{ daily_revenue | tojson }},
+      backgroundColor: 'rgba(0,229,160,0.25)',
+      borderColor: accent,
+      borderWidth: 2,
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#94a3b8', font: { size: 11 },
+        callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v
+      } }
+    }
+  }
+});
+
+// Status donut
+const statusData = [{{ paid_count }}, {{ pending_count }}, {{ failed_count }}, {{ cancelled_count }}];
+const statusLabels = ['Paid', 'Pending', 'Failed', 'Cancelled'];
+const statusColors = [accent, warn, danger, muted];
+const stCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(stCtx, {
+  type: 'doughnut',
+  data: {
+    labels: statusLabels,
+    datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 2, borderColor: '#0f1117', hoverOffset: 6 }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: { legend: { display: false } },
+    responsive: false,
+  }
+});
+
+// Legend
+const legend = document.getElementById('statusLegend');
+statusLabels.forEach((l, i) => {
+  if (statusData[i] === 0) return;
+  legend.innerHTML += `<div style="display:flex;align-items:center;gap:6px;">
+    <span style="width:10px;height:10px;border-radius:50%;background:${statusColors[i]};flex-shrink:0;"></span>
+    <span style="color:#94a3b8;">${l}</span>
+    <span style="font-weight:700;color:#e2e8f0;margin-left:auto;">${statusData[i]}</span>
+  </div>`;
+});
+</script>
+{% endblock %}

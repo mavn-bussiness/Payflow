@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}New Payment — PayFlow{% endblock %}
+{% block topbar_title %}New Payment{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="plus-circle"></i> Create Payment Request</div>
+    </div>
+
+    <form method="POST" id="payForm">
+
+      <!-- Customer Info -->
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;">Customer Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label><i data-lucide="user"></i> Customer Name *</label>
+          <input type="text" name="customer_name" placeholder="Full name" required />
+        </div>
+        <div class="form-group">
+          <label><i data-lucide="mail"></i> Customer Email *</label>
+          <input type="email" name="customer_email" placeholder="email@example.com" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label><i data-lucide="phone"></i> Phone Number</label>
+        <input type="tel" name="customer_phone" placeholder="+256 700 000000" />
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;" />
+
+      <!-- Product / Service -->
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;">Product / Service</div>
+
+      <div class="form-group">
+        <label><i data-lucide="package"></i> Service / Product</label>
+        <select name="service_id" id="serviceSelect">
+          <option value="">— Custom amount —</option>
+          {% for svc in services %}
+          <option value="{{ svc.id }}"
+            data-price="{{ svc.price }}"
+            data-tier="{{ svc.pricing_tier }}"
+            data-unit="{{ svc.unit_label or 'item' }}"
+            data-min="{{ svc.min_price or '' }}"
+            data-max="{{ svc.max_price or '' }}">
+            {{ svc.name }} — UGX {{ "{:,.0f}".format(svc.price) }}
+            {% if svc.pricing_tier != 'fixed' %}({{ svc.pricing_label }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Pricing hint for negotiable services -->
+      <div id="pricingHint" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius-sm);padding:0.65rem 1rem;font-size:0.8rem;color:var(--warn);margin-bottom:1rem;">
+        <i data-lucide="info" style="width:13px;height:13px;display:inline;margin-right:4px;"></i>
+        <span id="pricingHintText"></span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label><i data-lucide="banknote"></i> Unit Price (UGX) *</label>
+          <input type="number" name="unit_price" id="unitPriceInput" placeholder="e.g. 50000" min="1" step="100" required />
+        </div>
+        <div class="form-group">
+          <label><i data-lucide="hash"></i> Quantity <span id="unitLabelBadge" style="color:var(--muted);font-size:0.75rem;font-weight:400;"> / item</span></label>
+          <input type="number" name="quantity" id="quantityInput" value="1" min="0.01" step="0.01" required />
+        </div>
+      </div>
+
+      <!-- Discount row -->
+      <div class="form-row">
+        <div class="form-group">
+          <label><i data-lucide="tag"></i> Discount Type</label>
+          <select name="discount_type" id="discountType">
+            <option value="none">No discount</option>
+            <option value="percent">Percentage (%)</option>
+            <option value="flat">Fixed amount (UGX)</option>
+          </select>
+        </div>
+        <div class="form-group" id="discountValueGroup" style="display:none;">
+          <label id="discountValueLabel"><i data-lucide="percent"></i> Discount Value</label>
+          <input type="number" name="discount_value" id="discountValueInput" value="0" min="0" step="0.01" />
+        </div>
+      </div>
+
+      <!-- Live total -->
+      <div id="totalBox" style="background:var(--accent-dim);border:1px solid rgba(0,229,160,0.2);border-radius:var(--radius-sm);padding:1rem 1.25rem;margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text2);margin-bottom:0.3rem;">
+          <span>Subtotal</span><span id="subtotalDisplay">UGX 0</span>
+        </div>
+        <div id="discountRow" style="display:none;justify-content:space-between;font-size:0.82rem;color:var(--warn);margin-bottom:0.3rem;">
+          <span>Discount</span><span id="discountDisplay">— UGX 0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700;font-family:'Syne',sans-serif;color:var(--accent);border-top:1px solid rgba(0,229,160,0.15);padding-top:0.5rem;margin-top:0.3rem;">
+          <span>Total to Charge</span><span id="totalDisplay">UGX 0</span>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;" />
+
+      <!-- Payment -->
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;">Payment Details</div>
+
+      <div class="form-group">
+        <label><i data-lucide="credit-card"></i> Payment Method</label>
+        <select name="payment_method">
+          <option value="">— Not specified —</option>
+          <option value="Mobile Money">Mobile Money (MTN / Airtel)</option>
+          <option value="Card">Visa / Mastercard</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><i data-lucide="file-text"></i> Notes</label>
+        <textarea name="notes" placeholder="Any additional details…"></textarea>
+      </div>
+
+      <div style="background:var(--accent-dim);border:1px solid rgba(0,229,160,0.15);border-radius:var(--radius-sm);padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:flex-start;gap:0.65rem;">
+        <i data-lucide="shield-check" style="width:16px;height:16px;color:var(--accent);flex-shrink:0;margin-top:1px;"></i>
+        <div>
+          <div style="font-size:0.82rem;font-weight:600;color:var(--accent);">Secured by Flutterwave</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:0.1rem;">Customer will be redirected to Flutterwave's secure payment page. Supports MTN Mobile Money, Airtel Money, Visa/Mastercard, and Bank Transfer.</div>
+        </div>
+      </div>
+
+      <div class="flex gap-1">
+        <button type="submit" class="btn btn-primary btn-lg" style="flex:1;justify-content:center;">
+          <i data-lucide="send"></i> Generate Payment Link
+        </button>
+        <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const unitPriceInput   = document.getElementById('unitPriceInput');
+  const quantityInput    = document.getElementById('quantityInput');
+  const discountType     = document.getElementById('discountType');
+  const discountValueInput = document.getElementById('discountValueInput');
+  const discountValueGroup = document.getElementById('discountValueGroup');
+  const discountValueLabel = document.getElementById('discountValueLabel');
+  const subtotalDisplay  = document.getElementById('subtotalDisplay');
+  const discountDisplay  = document.getElementById('discountDisplay');
+  const discountRow      = document.getElementById('discountRow');
+  const totalDisplay     = document.getElementById('totalDisplay');
+  const unitLabelBadge   = document.getElementById('unitLabelBadge');
+  const pricingHint      = document.getElementById('pricingHint');
+  const pricingHintText  = document.getElementById('pricingHintText');
+
+  function fmt(n) {
+    return 'UGX ' + Math.round(n).toLocaleString();
+  }
+
+  function recalc() {
+    const up  = parseFloat(unitPriceInput.value) || 0;
+    const qty = parseFloat(quantityInput.value) || 0;
+    const dt  = discountType.value;
+    const dv  = parseFloat(discountValueInput.value) || 0;
+    const sub = up * qty;
+    let disc  = 0;
+    if (dt === 'percent') disc = sub * (dv / 100);
+    else if (dt === 'flat') disc = Math.min(dv, sub);
+    const total = Math.max(0, sub - disc);
+    subtotalDisplay.textContent = fmt(sub);
+    if (disc > 0) {
+      discountRow.style.display = 'flex';
+      discountDisplay.textContent = '— ' + fmt(disc);
+    } else {
+      discountRow.style.display = 'none';
+    }
+    totalDisplay.textContent = fmt(total);
+  }
+
+  discountType.addEventListener('change', function() {
+    if (this.value === 'none') {
+      discountValueGroup.style.display = 'none';
+      discountValueInput.value = 0;
+    } else {
+      discountValueGroup.style.display = '';
+      discountValueLabel.innerHTML = this.value === 'percent'
+        ? '<i data-lucide="percent"></i> Discount %'
+        : '<i data-lucide="banknote"></i> Discount (UGX)';
+      lucide.createIcons();
+    }
+    recalc();
+  });
+
+  document.getElementById('serviceSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const price = opt.getAttribute('data-price');
+    const tier  = opt.getAttribute('data-tier') || 'fixed';
+    const unit  = opt.getAttribute('data-unit') || 'item';
+    const minP  = opt.getAttribute('data-min');
+    const maxP  = opt.getAttribute('data-max');
+
+    if (price) unitPriceInput.value = price;
+    unitLabelBadge.textContent = ' / ' + unit;
+
+    // Show pricing hint for non-fixed tiers
+    if (tier === 'negotiable') {
+      let hint = 'This service has negotiable pricing.';
+      if (minP && maxP) hint += ` Suggested range: UGX ${parseInt(minP).toLocaleString()} – ${parseInt(maxP).toLocaleString()}`;
+      else if (minP) hint += ` Minimum: UGX ${parseInt(minP).toLocaleString()}`;
+      pricingHintText.textContent = hint;
+      pricingHint.style.display = '';
+    } else if (tier === 'per_unit' || tier === 'hourly' || tier === 'daily') {
+      pricingHintText.textContent = `Price is per ${unit}. Adjust quantity as needed.`;
+      pricingHint.style.display = '';
+    } else if (tier === 'custom') {
+      pricingHintText.textContent = 'This is a custom-quoted service. Adjust the price as agreed.';
+      pricingHint.style.display = '';
+    } else {
+      pricingHint.style.display = 'none';
+    }
+    recalc();
+    lucide.createIcons();
+  });
+
+  [unitPriceInput, quantityInput, discountValueInput].forEach(el => el.addEventListener('input', recalc));
+  recalc();
+</script>
+{% endblock %}
