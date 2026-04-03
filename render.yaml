@@ -6,16 +6,10 @@ services:
     startCommand: gunicorn run:app
     releaseCommand: flask db upgrade
     envVars:
-      - key: user
-        sync: false
-      - key: password
-        sync: false
-      - key: host
-        sync: false
-      - key: port
-        sync: false
-      - key: dbname
-        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: payflow_db_dwna
+          property: connectionString
       - key: SECRET_KEY
         sync: false
       - key: FLW_PUBLIC_KEY
@@ -30,3 +24,7 @@ services:
         value: run.py
       - key: FLASK_ENV
         value: production
+
+databases:
+  - name: payflow_db_dwna
+    plan: free

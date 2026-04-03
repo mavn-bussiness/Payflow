@@ -18,18 +18,10 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
     app.config['DEBUG'] = not is_production
 
-    user = os.getenv('user')
-    password = os.getenv('password')
-    host = os.getenv('host')
-    port = os.getenv('port', '6543' if is_production else '5432')
-    dbname = os.getenv('dbname')
-
-    if all([user, password, host, dbname]):
-        database_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}?sslmode=require"
-    elif is_production:
-        raise RuntimeError("Database credentials missing in production")
-    else:
-        database_url = 'sqlite:///payments.db'
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///payments.db')
+    # Render injects postgres:// but SQLAlchemy requires postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
