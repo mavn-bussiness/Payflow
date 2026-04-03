@@ -43,4 +43,7 @@ def create_app():
     app.register_blueprint(payments)
     app.register_blueprint(dashboard)
 
+    with app.app_context():
+        db.create_all()
+
     return app
