@@ -9,14 +9,78 @@ from datetime import datetime
 
 payments = Blueprint('payments', __name__)
 
-FLW_BASE_URL = 'https://api.flutterwave.com/v3'
+MOMO_BASE_URL = os.environ.get('MOMO_BASE_URL', 'https://sandbox.momodeveloper.mtn.com')
+MOMO_COLLECTION_URL = f'{MOMO_BASE_URL}/collection'
 
 
-def flw_headers():
+def momo_get_token():
+    """Get a Bearer token from MTN MoMo Collections API."""
+    subscription_key = os.environ.get('MOMO_SUBSCRIPTION_KEY', '')
+    api_user = os.environ.get('MOMO_API_USER', '')
+    api_key = os.environ.get('MOMO_API_KEY', '')
+    resp = requests.post(
+        f'{MOMO_COLLECTION_URL}/token/',
+        auth=(api_user, api_key),
+        headers={'Ocp-Apim-Subscription-Key': subscription_key},
+        timeout=15
+    )
+    resp.raise_for_status()
+    return resp.json().get('access_token')
+
+
+def momo_headers(token):
     return {
-        'Authorization': f'Bearer {os.environ.get("FLW_SECRET_KEY", "")}',
-        'Content-Type': 'application/json'
+        'Authorization': f'Bearer {token}',
+        'X-Target-Environment': os.environ.get('MOMO_ENVIRONMENT', 'sandbox'),
+        'Ocp-Apim-Subscription-Key': os.environ.get('MOMO_SUBSCRIPTION_KEY', ''),
+        'Content-Type': 'application/json',
     }
+
+
+def validate_account(phone, token):
+    """Returns True if the phone number is an active MoMo account."""
+    headers = momo_headers(token)
+    headers.pop('Content-Type', None)
+    resp = requests.get(
+        f'{MOMO_COLLECTION_URL}/v1/accountholder/msisdn/{phone}/active',
+        headers=headers,
+        timeout=15
+    )
+    return resp.status_code == 200
+
+
+def request_to_pay(reference, amount, phone, payer_name, description, token):
+    """Initiate a RequesttoPay. Returns the externalId (same as reference)."""
+    payload = {
+        'amount': str(int(amount)),
+        'currency': os.environ.get('MOMO_CURRENCY', 'UGX'),
+        'externalId': reference,
+        'payer': {
+            'partyIdType': 'MSISDN',
+            'partyId': phone,
+        },
+        'payerMessage': description,
+        'payeeNote': payer_name,
+    }
+    resp = requests.post(
+        f'{MOMO_COLLECTION_URL}/v1_0/requesttopay',
+        json=payload,
+        headers={**momo_headers(token), 'X-Reference-Id': reference},
+        timeout=15
+    )
+    return resp.status_code == 202
+
+
+def get_payment_status(reference, token):
+    """Returns the MoMo transaction status dict."""
+    resp = requests.get(
+        f'{MOMO_COLLECTION_URL}/v1_0/requesttopay/{reference}',
+        headers=momo_headers(token),
+        timeout=15
+    )
+    if resp.status_code == 200:
+        return resp.json()
+    return None
 
 
 def compute_total(unit_price, quantity, discount_type, discount_value):
@@ -60,12 +124,14 @@ def new_payment():
         if unit_price <= 0:
             flash('Unit price must be greater than zero.', 'danger')
             return render_template('new_payment.html', services=services)
+        if not customer_name or not customer_phone:
+            flash('Customer name and phone number are required for Mobile Money.', 'danger')
+            return render_template('new_payment.html', services=services)
+
+        # Normalise phone: strip spaces/dashes, ensure it starts with country code
+        phone = customer_phone.replace(' ', '').replace('-', '').replace('+', '')
 
         amount = compute_total(unit_price, quantity, discount_type, discount_value)
-
-        if not customer_name or not customer_email:
-            flash('Customer name and email are required.', 'danger')
-            return render_template('new_payment.html', services=services)
 
         txn = Transaction(
             customer_name=customer_name,
@@ -76,7 +142,7 @@ def new_payment():
             discount_type=discount_type,
             discount_value=discount_value,
             amount=amount,
-            payment_method=payment_method,
+            payment_method=payment_method or 'MTN Mobile Money',
             notes=notes,
             business_id=current_user.id,
             service_id=int(service_id) if service_id else None,
@@ -85,112 +151,103 @@ def new_payment():
         db.session.add(txn)
         db.session.commit()
 
-        redirect_url = url_for('payments.payment_detail', ref=txn.reference, _external=True)
         service_name = txn.service.name if txn.service else 'Payment'
-
-        payload = {
-            'tx_ref': txn.reference,
-            'amount': amount,
-            'currency': 'UGX',
-            'redirect_url': redirect_url,
-            'customer': {
-                'email': customer_email,
-                'phonenumber': customer_phone,
-                'name': customer_name
-            },
-            'customizations': {
-                'title': current_user.name,
-                'description': f'{service_name} x{txn.quantity_label}',
-            },
-            'payment_options': 'mobilemoney,card,banktransfer',
-            'meta': {'transaction_db_id': txn.id, 'business_id': current_user.id}
-        }
+        description = f'{service_name} x{txn.quantity_label} — {current_user.name}'
 
         try:
-            resp = requests.post(f'{FLW_BASE_URL}/payments', json=payload, headers=flw_headers(), timeout=15)
-            data = resp.json()
-            if data.get('status') == 'success':
-                txn.flw_payment_link = data['data']['link']
+            token = momo_get_token()
+
+            if not validate_account(phone, token):
+                flash('Phone number is not a valid active MTN MoMo account.', 'danger')
+                txn.status = 'failed'
                 db.session.commit()
-                return redirect(data['data']['link'])
+                return render_template('new_payment.html', services=services)
+
+            # Use a UUID as the MoMo reference (X-Reference-Id must be UUID)
+            momo_ref = str(uuid.uuid4())
+            txn.momo_reference_id = momo_ref
+            db.session.commit()
+
+            success = request_to_pay(momo_ref, amount, phone, customer_name, description, token)
+            if success:
+                flash(
+                    f'Payment request sent to {customer_phone}. '
+                    'Ask the customer to approve the prompt on their phone.',
+                    'success'
+                )
+                return redirect(url_for('payments.payment_detail', ref=txn.reference))
             else:
-                flash(f'Payment gateway error: {data.get("message", "Unknown error")}', 'danger')
+                txn.status = 'failed'
+                db.session.commit()
+                flash('Failed to send payment request. Check the phone number and try again.', 'danger')
+
         except requests.RequestException as e:
-            flash('Could not reach payment gateway. Check your API keys.', 'danger')
-            current_app.logger.error(f'Flutterwave error: {e}')
+            flash('Could not reach MTN MoMo API. Check your credentials.', 'danger')
+            current_app.logger.error(f'MTN MoMo error: {e}')
 
         return render_template('new_payment.html', services=services)
 
     return render_template('new_payment.html', services=services)
 
 
-@payments.route('/payments/callback')
-def flw_callback():
-    status = request.args.get('status')
-    tx_ref = request.args.get('tx_ref')
-    transaction_id = request.args.get('transaction_id')
+@payments.route('/payments/<ref>/check', methods=['POST'])
+@login_required
+def check_payment_status(ref):
+    """Manually poll MTN MoMo for the latest status of a pending transaction."""
+    txn = Transaction.query.filter_by(reference=ref, business_id=current_user.id).first_or_404()
 
-    txn = Transaction.query.filter_by(reference=tx_ref).first()
-    if not txn:
-        flash('Transaction not found.', 'danger')
-        return redirect(url_for('dashboard.home'))
+    if txn.status != 'pending' or not txn.momo_reference_id:
+        flash('Nothing to check for this transaction.', 'info')
+        return redirect(url_for('payments.payment_detail', ref=ref))
 
-    if status == 'successful' and transaction_id:
-        try:
-            resp = requests.get(
-                f'{FLW_BASE_URL}/transactions/{transaction_id}/verify',
-                headers=flw_headers(), timeout=15
-            )
-            data = resp.json()
-            flw_data = data.get('data', {})
-            if (data.get('status') == 'success'
-                    and flw_data.get('status') == 'successful'
-                    and float(flw_data.get('amount', 0)) >= txn.amount
-                    and flw_data.get('currency') == 'UGX'):
+    try:
+        token = momo_get_token()
+        data = get_payment_status(txn.momo_reference_id, token)
+        if data:
+            status = data.get('status', '').upper()
+            if status == 'SUCCESSFUL':
                 txn.status = 'paid'
                 txn.paid_at = datetime.utcnow()
-                txn.flw_transaction_id = str(transaction_id)
+                txn.momo_transaction_id = data.get('financialTransactionId', '')
                 db.session.commit()
-                flash(f'Payment confirmed! Reference: {txn.reference}', 'success')
-            else:
+                flash('Payment confirmed!', 'success')
+            elif status == 'FAILED':
                 txn.status = 'failed'
                 db.session.commit()
-                flash('Payment verification failed. Contact support.', 'danger')
-        except requests.RequestException:
-            flash('Could not verify payment. Check transaction status.', 'danger')
-    elif status == 'cancelled':
-        txn.status = 'cancelled'
-        db.session.commit()
-        flash('Payment was cancelled.', 'info')
-    else:
-        txn.status = 'failed'
-        db.session.commit()
-        flash('Payment was not completed.', 'danger')
+                flash(f'Payment failed: {data.get("reason", "Unknown reason")}', 'danger')
+            else:
+                flash(f'Payment is still {status.lower()}. Ask the customer to check their phone.', 'info')
+        else:
+            flash('Could not retrieve payment status.', 'danger')
+    except requests.RequestException as e:
+        flash('Could not reach MTN MoMo API.', 'danger')
+        current_app.logger.error(f'MTN MoMo status check error: {e}')
 
-    return redirect(url_for('payments.payment_detail', ref=txn.reference))
+    return redirect(url_for('payments.payment_detail', ref=ref))
 
 
 @payments.route('/payments/webhook', methods=['POST'])
-def flw_webhook():
-    secret_hash = os.environ.get('FLW_WEBHOOK_SECRET', '')
-    signature = request.headers.get('verif-hash', '')
-    if not secret_hash or signature != secret_hash:
-        return jsonify({'status': 'unauthorized'}), 401
-
+def momo_webhook():
+    """MTN MoMo callback notification endpoint."""
     payload = request.get_json()
     if not payload:
         return jsonify({'status': 'bad request'}), 400
 
-    event = payload.get('event')
-    data = payload.get('data', {})
+    external_id = payload.get('externalId') or payload.get('referenceId')
+    status = payload.get('status', '').upper()
 
-    if event == 'charge.completed' and data.get('status') == 'successful':
-        tx_ref = data.get('tx_ref')
-        txn = Transaction.query.filter_by(reference=tx_ref).first()
-        if txn and txn.status != 'paid':
+    if not external_id:
+        return jsonify({'status': 'ok'}), 200
+
+    txn = Transaction.query.filter_by(momo_reference_id=external_id).first()
+    if txn and txn.status == 'pending':
+        if status == 'SUCCESSFUL':
             txn.status = 'paid'
             txn.paid_at = datetime.utcnow()
-            txn.flw_transaction_id = str(data.get('id', ''))
+            txn.momo_transaction_id = payload.get('financialTransactionId', '')
+            db.session.commit()
+        elif status == 'FAILED':
+            txn.status = 'failed'
             db.session.commit()
 
     return jsonify({'status': 'ok'}), 200
@@ -213,35 +270,29 @@ def resend_payment(ref):
 
     txn.reference = f"PAY-{uuid.uuid4().hex[:8].upper()}"
     txn.status = 'pending'
-    txn.flw_payment_link = None
+    txn.momo_reference_id = None
+    txn.momo_transaction_id = None
     db.session.commit()
 
-    redirect_url = url_for('payments.payment_detail', ref=txn.reference, _external=True)
-    payload = {
-        'tx_ref': txn.reference,
-        'amount': txn.amount,
-        'currency': 'UGX',
-        'redirect_url': redirect_url,
-        'customer': {
-            'email': txn.customer_email or f'{txn.reference.lower()}@payflow.ug',
-            'phonenumber': txn.customer_phone or '',
-            'name': txn.customer_name
-        },
-        'customizations': {'title': current_user.name},
-        'payment_options': 'mobilemoney,card,banktransfer',
-    }
+    phone = (txn.customer_phone or '').replace(' ', '').replace('-', '').replace('+', '')
+    service_name = txn.service.name if txn.service else 'Payment'
+    description = f'{service_name} — {current_user.name}'
 
     try:
-        resp = requests.post(f'{FLW_BASE_URL}/payments', json=payload, headers=flw_headers(), timeout=15)
-        data = resp.json()
-        if data.get('status') == 'success':
-            txn.flw_payment_link = data['data']['link']
-            db.session.commit()
-            return redirect(data['data']['link'])
+        token = momo_get_token()
+        momo_ref = str(uuid.uuid4())
+        txn.momo_reference_id = momo_ref
+        db.session.commit()
+
+        success = request_to_pay(momo_ref, txn.amount, phone, txn.customer_name, description, token)
+        if success:
+            flash(f'Payment request resent to {txn.customer_phone}.', 'success')
         else:
-            flash(f'Gateway error: {data.get("message")}', 'danger')
+            txn.status = 'failed'
+            db.session.commit()
+            flash('Failed to resend payment request.', 'danger')
     except requests.RequestException:
-        flash('Could not reach payment gateway.', 'danger')
+        flash('Could not reach MTN MoMo API.', 'danger')
 
     return redirect(url_for('payments.payment_detail', ref=txn.reference))
 

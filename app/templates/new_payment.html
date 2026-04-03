@@ -105,10 +105,7 @@
       <div class="form-group">
         <label><i data-lucide="credit-card"></i> Payment Method</label>
         <select name="payment_method">
-          <option value="">— Not specified —</option>
-          <option value="Mobile Money">Mobile Money (MTN / Airtel)</option>
-          <option value="Card">Visa / Mastercard</option>
-          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="MTN Mobile Money" selected>MTN Mobile Money</option>
         </select>
       </div>
 
@@ -120,14 +117,14 @@
       <div style="background:var(--accent-dim);border:1px solid rgba(0,229,160,0.15);border-radius:var(--radius-sm);padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:flex-start;gap:0.65rem;">
         <i data-lucide="shield-check" style="width:16px;height:16px;color:var(--accent);flex-shrink:0;margin-top:1px;"></i>
         <div>
-          <div style="font-size:0.82rem;font-weight:600;color:var(--accent);">Secured by Flutterwave</div>
-          <div style="font-size:0.78rem;color:var(--text2);margin-top:0.1rem;">Customer will be redirected to Flutterwave's secure payment page. Supports MTN Mobile Money, Airtel Money, Visa/Mastercard, and Bank Transfer.</div>
+          <div style="font-size:0.82rem;font-weight:600;color:var(--accent);">Powered by MTN MoMo</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:0.1rem;">A USSD payment prompt will be sent directly to the customer's MTN Mobile Money number for approval.</div>
         </div>
       </div>
 
       <div class="flex gap-1">
         <button type="submit" class="btn btn-primary btn-lg" style="flex:1;justify-content:center;">
-          <i data-lucide="send"></i> Generate Payment Link
+          <i data-lucide="send"></i> Send Payment Request
         </button>
         <a href="{{ url_for('dashboard.home') }}" class="btn btn-secondary btn-lg">Cancel</a>
       </div>

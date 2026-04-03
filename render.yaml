@@ -11,14 +11,18 @@ services:
           property: connectionString
       - key: SECRET_KEY
         sync: false
-      - key: FLW_PUBLIC_KEY
+      - key: MOMO_SUBSCRIPTION_KEY
         sync: false
-      - key: FLW_SECRET_KEY
+      - key: MOMO_API_USER
         sync: false
-      - key: FLW_ENCRYPTION_KEY
+      - key: MOMO_API_KEY
         sync: false
-      - key: FLW_WEBHOOK_SECRET
-        sync: false
+      - key: MOMO_ENVIRONMENT
+        value: production
+      - key: MOMO_CURRENCY
+        value: UGX
+      - key: MOMO_BASE_URL
+        value: https://momodeveloper.mtn.com
       - key: FLASK_APP
         value: run.py
       - key: FLASK_ENV

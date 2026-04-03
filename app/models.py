@@ -75,8 +75,8 @@ class Transaction(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     paid_at = db.Column(db.DateTime)
 
-    flw_payment_link = db.Column(db.String(500))
-    flw_transaction_id = db.Column(db.String(100))
+    momo_reference_id = db.Column(db.String(100))   # UUID sent as X-Reference-Id
+    momo_transaction_id = db.Column(db.String(100))  # financialTransactionId from MoMo
 
     business_id = db.Column(db.Integer, db.ForeignKey('businesses.id'), nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=True)
