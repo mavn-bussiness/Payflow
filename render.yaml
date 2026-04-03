@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: payflow
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    releaseCommand: flask db upgrade
+    envVars:
+      - key: user
+        sync: false
+      - key: password
+        sync: false
+      - key: host
+        sync: false
+      - key: port
+        sync: false
+      - key: dbname
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: FLW_PUBLIC_KEY
+        sync: false
+      - key: FLW_SECRET_KEY
+        sync: false
+      - key: FLW_ENCRYPTION_KEY
+        sync: false
+      - key: FLW_WEBHOOK_SECRET
+        sync: false
+      - key: FLASK_APP
+        value: run.py
