@@ -26,5 +26,5 @@ services:
         value: production
 
 databases:
-  - name: payflow_db_dwna
+  - name: PayFlow_db
     plan: free
